@@ -231,8 +231,6 @@ function HomeScreen({ cases, upcoming, onOpen, onNew, onToggleNotify, connected 
   );
 }
 
-const LINE_CONTACTS = ["ゆうた", "みさき", "けんじ", "あやの", "たくみ"];
-
 function useSpeechRecognition() {
   const recognitionRef = useRef(null);
   const [supported, setSupported] = useState(false);
@@ -253,10 +251,10 @@ function useSpeechRecognition() {
 function NewCaseScreen({ onBack, onSubmit }) {
   const [title, setTitle] = useState("");
   const [detail, setDetail] = useState("");
+  const [inviteeName, setInviteeName] = useState("");
   const [error, setError] = useState("");
   const [recording, setRecording] = useState(false);
-  const [showContacts, setShowContacts] = useState(false);
-  const [invitee, setInvitee] = useState(null);
+  const [invited, setInvited] = useState(false);
   const { recognition, supported } = useSpeechRecognition();
   const baseTranscriptRef = useRef("");
 
@@ -288,7 +286,7 @@ function NewCaseScreen({ onBack, onSubmit }) {
       return;
     }
     setError("");
-    onSubmit({ title: title.trim(), detail: detail.trim(), invitee });
+    onSubmit({ title: title.trim(), detail: detail.trim(), invitee: inviteeName.trim() || "相手" });
   };
 
   const toggleRecord = () => {
@@ -315,9 +313,12 @@ function NewCaseScreen({ onBack, onSubmit }) {
     }
   };
 
-  const pickContact = (name) => {
-    setInvitee(name);
-    setShowContacts(false);
+  const sendLineInvite = () => {
+    const appUrl = "https://saiban-shitemita-v2.vercel.app";
+    const message = `${title || "議題"}について「裁判してみた」で話し合いませんか？\n${detail}\n\n${appUrl}`;
+    const lineUrl = `https://line.me/R/msg/text/?${encodeURIComponent(message)}`;
+    window.open(lineUrl, "_blank");
+    setInvited(true);
   };
 
   return (
@@ -333,31 +334,39 @@ function NewCaseScreen({ onBack, onSubmit }) {
         <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="例：割り勘でもめた事件" style={inputStyle} />
         <label style={{ ...labelStyle, marginTop: 16 }}>詳細</label>
         <textarea value={detail} onChange={(e) => setDetail(e.target.value)} placeholder="何が起きたか、簡潔に書いてください" rows={4} style={{ ...inputStyle, resize: "none" }} />
-        <label style={{ ...labelStyle, marginTop: 16 }}>相手を招待</label>
-        {invitee ? (
-          <div style={{ ...inputStyle, display: "flex", alignItems: "center", justifyContent: "space-between", color: TEXT }}>
-            <span style={{ display: "flex", alignItems: "center", gap: 8 }}>
-              <Check size={15} color="#7CDA9E" /> {invitee}さんに送信済み
-            </span>
-            <button onClick={() => setShowContacts(true)} style={{ background: "none", border: "none", color: MUTED, fontSize: 12, cursor: "pointer" }}>変更</button>
+        <label style={{ ...labelStyle, marginTop: 16 }}>相手の名前（表示用）</label>
+        <input value={inviteeName} onChange={(e) => setInviteeName(e.target.value)} placeholder="例：たろう" style={inputStyle} />
+
+        <label style={{ ...labelStyle, marginTop: 20 }}>相手を招待</label>
+        {invited ? (
+          <div style={{ ...inputStyle, display: "flex", alignItems: "center", gap: 8, color: TEXT }}>
+            <Check size={15} color="#7CDA9E" /> LINEでの招待を送信しました
           </div>
         ) : (
-          <button onClick={() => setShowContacts((v) => !v)} style={{ ...inputStyle, display: "flex", alignItems: "center", gap: 8, cursor: "pointer", color: MUTED }}>
-            <MessageCircle size={16} /> LINEの友だちから選んで送る
+          <button
+            onClick={sendLineInvite}
+            disabled={!title.trim() || !detail.trim()}
+            style={{
+              ...inputStyle,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: 8,
+              cursor: !title.trim() || !detail.trim() ? "not-allowed" : "pointer",
+              color: !title.trim() || !detail.trim() ? MUTED : "#06C755",
+              fontWeight: 700,
+              opacity: !title.trim() || !detail.trim() ? 0.5 : 1,
+            }}
+          >
+            <MessageCircle size={16} /> LINEで招待メッセージを送る
           </button>
         )}
-        {showContacts && (
-          <div style={{ marginTop: 10, background: CARD, border: `1px solid ${LINE}`, borderRadius: 10, overflow: "hidden" }}>
-            {LINE_CONTACTS.map((name, i) => (
-              <button key={name} onClick={() => pickContact(name)} style={{ width: "100%", padding: "12px 14px", background: "none", border: "none", borderBottom: i < LINE_CONTACTS.length - 1 ? `1px solid ${LINE}` : "none", display: "flex", alignItems: "center", gap: 10, cursor: "pointer", textAlign: "left" }}>
-                <div style={{ width: 30, height: 30, borderRadius: "50%", background: "#3A3A42", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, fontWeight: 700, color: TEXT, flexShrink: 0 }}>{name[0]}</div>
-                <span style={{ fontSize: 13, color: TEXT }}>{name}</span>
-              </button>
-            ))}
-          </div>
-        )}
+        <p style={{ fontSize: 10, color: MUTED, margin: "6px 0 0" }}>
+          タップするとLINEアプリが開き、送りたい友だちを選べます（先にタイトルと詳細を入力してください）
+        </p>
+
         {error && <p style={{ color: PINK, fontSize: 12, marginTop: 8 }}>{error}</p>}
-        <button onClick={submit} style={{ ...primaryBtn, marginTop: 24 }}>相手に送って開廷する</button>
+        <button onClick={submit} style={{ ...primaryBtn, marginTop: 24 }}>開廷する</button>
       </div>
     </div>
   );
